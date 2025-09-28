@@ -1,1 +1,44 @@
-hello
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {
+            width: 200px;
+            height: 250px;
+            margin: 0;
+            padding: 10px;
+            font-family: Arial, sans-serif;
+        }
+        .catbox {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .catimg {
+            width: 120px;
+            height: 120px;
+            border: 2px solid #ccc;
+            background: #f0f0f0;
+        }
+        .stats {
+            font-size: 12px;
+            text-align: left;
+        }
+        .line {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="catbox">
+        <img class="catimg" src="art/neutral.gif" alt="Cat">
+        <div>Mood: <span id="mood">Neutral</span></div>
+    </div>
+    <div class="stats">
+        <div class="line">Time tracked: <span id="time">0s</span></div>
+        <div class="line">Current site: <span id="site">None</span></div>
+        <div class="line">Sites visited: <span id="count">0</span></div>
+    </div>
+    <script src="popup.js"></script>
+</body>
+</html>

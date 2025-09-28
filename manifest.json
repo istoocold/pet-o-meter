@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "Pet-o-Meter",
+  "version": "1.0",
+  "description": "Virtual cat productivity tracker",
+  "permissions": ["tabs", "storage"],
+  "host_permissions": ["<all_urls>"],
+  "background": {"service_worker": "background.js"},
+  "action": {"default_popup": "popup.html"}
+}
