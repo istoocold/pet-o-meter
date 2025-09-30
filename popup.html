@@ -3,42 +3,362 @@
 <head>
     <meta charset="utf-8">
     <style>
-        body {
-            width: 200px;
-            height: 250px;
+        * {
             margin: 0;
-            padding: 10px;
-            font-family: Arial, sans-serif;
+            padding: 0;
+            box-sizing: border-box;
         }
+        
+        body {
+            width: 320px;
+            padding: 0;
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #fff;
+        }
+        
+        .container {
+            background: #000;
+            border: 3px solid #fff;
+        }
+        
+        .header {
+            text-align: center;
+            padding: 20px;
+            background: #fff;
+            color: #000;
+            border-bottom: 3px solid #000;
+        }
+        
+        .title {
+            font-size: 24px;
+            font-weight: bold;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+        
+        .subtitle {
+            font-size: 10px;
+            letter-spacing: 2px;
+            margin-top: 4px;
+            text-transform: uppercase;
+        }
+        
         .catbox {
             text-align: center;
-            margin-bottom: 10px;
+            padding: 30px 20px;
+            background: #000;
+            border-bottom: 3px solid #fff;
+            position: relative;
         }
+        
+        .catbox::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: repeating-linear-gradient(
+                90deg,
+                #fff 0px,
+                #fff 10px,
+                #000 10px,
+                #000 20px
+            );
+        }
+        
         .catimg {
-            width: 120px;
-            height: 120px;
-            border: 2px solid #ccc;
-            background: #f0f0f0;
+            width: 160px;
+            height: 160px;
+            object-fit: cover;
+            margin-bottom: 20px;
+            background: #fff;
+            border: 3px solid #fff;
+            image-rendering: crisp-edges;
         }
-        .stats {
-            font-size: 12px;
+        
+        .mood-display {
+            font-size: 20px;
+            font-weight: bold;
+            color: #000;
+            background: #fff;
+            padding: 12px 24px;
+            display: inline-block;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            border: 3px solid #000;
+            box-shadow: 6px 6px 0 #000;
+        }
+        
+        .mood-emoji {
+            margin-right: 8px;
+            font-size: 24px;
+        }
+        
+        .speech-box {
+            margin-top: 20px;
+            background: #fff;
+            color: #000;
+            border: 3px solid #000;
+            padding: 16px;
+            position: relative;
+            box-shadow: 6px 6px 0 #000;
             text-align: left;
         }
-        .line {
-            margin: 5px 0;
+        
+        .speech-pointer {
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #000;
+            font-size: 20px;
+            line-height: 1;
+        }
+        
+        .speech-content {
+            font-size: 11px;
+            line-height: 1.5;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            word-wrap: break-word;
+            min-height: 40px;
+        }
+        
+        .speech-content.loading {
+            opacity: 0.5;
+        }
+        
+        .stats {
+            background: #000;
+            padding: 0;
+        }
+        
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 3px solid #fff;
+            background: #000;
+        }
+        
+        .stat-item:last-child {
+            border-bottom: none;
+        }
+        
+        .stat-item:nth-child(even) {
+            background: #0a0a0a;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #fff;
+            font-weight: bold;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        
+        .stat-value {
+            font-size: 14px;
+            color: #000;
+            font-weight: bold;
+            background: #fff;
+            padding: 6px 12px;
+            letter-spacing: 1px;
+            max-width: 160px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            border: 2px solid #fff;
+        }
+        
+        .clickable-row {
+            cursor: pointer;
+        }
+        
+        .clickable-row:hover {
+            background: #111;
+        }
+        
+        .dropdown-menu {
+            background: #000;
+            border-top: 3px solid #fff;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .dropdown-header {
+            background: #fff;
+            color: #000;
+            padding: 8px 20px;
+            font-size: 10px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            border-bottom: 3px solid #000;
+        }
+        
+        .dropdown-content {
+            padding: 8px 0;
+        }
+        
+        .dropdown-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 20px;
+            font-size: 11px;
+            border-bottom: 1px solid #333;
+            letter-spacing: 1px;
+        }
+        
+        .dropdown-item:last-child {
+            border-bottom: none;
+        }
+        
+        .dropdown-item .site-name {
+            color: #fff;
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .dropdown-item .site-time {
+            color: #fff;
+            background: #333;
+            padding: 2px 8px;
+            margin-left: 8px;
+            border: 1px solid #666;
+            font-size: 10px;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 16px;
+            background: #fff;
+            color: #000;
+            border-top: 3px solid #000;
+        }
+        
+        .footer-text {
+            font-size: 10px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        
+        .productivity-bar-container {
+            display: flex;
+            width: 100%;
+            height: 20px;
+            border: 3px solid #fff;
+            background: #000;
+            overflow: hidden;
+        }
+        
+        .bar-segment {
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+        
+        .bar-segment.class-3 {
+            background: #fff;
+        }
+        
+        .bar-segment.class-2 {
+            background: repeating-linear-gradient(
+                90deg,
+                #fff 0px,
+                #fff 3px,
+                #666 3px,
+                #666 6px
+            );
+        }
+        
+        .bar-segment.class-1 {
+            background: #444;
+        }
+        
+        .bar-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            font-size: 9px;
+            letter-spacing: 1px;
+            color: #fff;
+        }
+        
+        .bar-labels span {
+            flex: 1;
+            text-align: center;
+        }
+        
+        .glitch {
+            position: relative;
+            text-shadow: 2px 2px 0 #000;
         }
     </style>
 </head>
 <body>
-    <div class="catbox">
-        <img class="catimg" src="art/neutral.gif" alt="Cat">
-        <div>Mood: <span id="mood">Neutral</span></div>
+    <div class="container">
+        <div class="header">
+            <div class="title glitch">PET-O-METER</div>
+            <div class="subtitle">PRODUCTIVITY.TRACKER.v1.0</div>
+        </div>
+        
+        <div class="catbox">
+            <img class="catimg" src="art/neutral.gif" alt="Cat">
+            <div class="mood-display">
+                <span class="mood-emoji" id="emoji">O</span>
+                <span id="mood">NEUTRAL</span>
+            </div>
+            
+            <div class="speech-box">
+                <div class="speech-pointer">v</div>
+                <div class="speech-content" id="quote">INITIALIZING...</div>
+            </div>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-item">
+                <span class="stat-label">> TIME.TRACKED</span>
+                <span class="stat-value" id="time">0s</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">> CURRENT.SITE</span>
+                <span class="stat-value" id="site">NONE</span>
+            </div>
+            <div class="stat-item clickable-row" id="sites-row">
+                <span class="stat-label">> SITES.VISITED</span>
+                <span class="stat-value" id="count">0</span>
+            </div>
+            
+            <div class="dropdown-menu" id="sites-dropdown" style="display: none;">
+                <div class="dropdown-header">VISITED SITES</div>
+                <div class="dropdown-content" id="sites-list">
+                    <div class="dropdown-item">NO SITES YET</div>
+                </div>
+            </div>
+            
+            <div style="padding: 16px 20px;">
+                <div class="productivity-bar-container" id="productivity-bar">
+                </div>
+                <div class="bar-labels">
+                    <span>CLASS 3</span>
+                    <span>CLASS 2</span>
+                    <span>CLASS 1</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <div class="footer-text">[ AUTO.REFRESH: 5s ]</div>
+        </div>
     </div>
-    <div class="stats">
-        <div class="line">Time tracked: <span id="time">0s</span></div>
-        <div class="line">Current site: <span id="site">None</span></div>
-        <div class="line">Sites visited: <span id="count">0</span></div>
-    </div>
+    
     <script src="popup.js"></script>
 </body>
 </html>
+
+
+
