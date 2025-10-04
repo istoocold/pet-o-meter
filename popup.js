@@ -1,59 +1,155 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    await load();
+    await loaddata();
     
-    const row = document.getElementById('sites-row');
-    const dd = document.getElementById('sites-dropdown');
+    const sitesrow = document.getElementById('sites-row');
+    const dropdown = document.getElementById('sites-dropdown');
     
-    if (row && dd) {
-        row.addEventListener('click', () => {
-            dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+    if (sitesrow && dropdown) {
+        sitesrow.addEventListener('click', () => {
+            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
         });
     }
     
+    const infobtn = document.getElementById('info-btn');
+    const modal = document.getElementById('modal');
+    const closebtn = document.getElementById('close-btn');
+    
+    infobtn?.addEventListener('click', () => modal.classList.add('show'));
+    closebtn?.addEventListener('click', () => modal.classList.remove('show'));
+    modal?.addEventListener('click', (ev) => {
+        if (ev.target === modal) modal.classList.remove('show');
+    });
+    
+    document.getElementById('github-btn')?.addEventListener('click', () => {
+        chrome.tabs.create({ url: 'https://github.com/istoocold/pet-o-meter' });
+    });
+    
+    fetchnews();
+    
     setInterval(async () => {
-        await load();
+        await loaddata();
     }, 5000);
+    
+    setInterval(fetchnews, 1800000);
 });
 
-let lastm = null;
+let lastmood = null;
 
-async function load() {
-    const d = await chrome.storage.local.get(['trackingData', 'currentMood', 'productivityLevel', 'currentQuote', 'lastQuoteMood']);
-    const info = d.trackingData || {
+async function loaddata() {
+    const stored = await chrome.storage.local.get(['trackingData', 'currentMood', 'productivityLevel', 'currentQuote', 'lastQuoteMood']);
+    const trackdata = stored.trackingData || {
         total: 0,
         curr: 'None',
         sites: []
     };
-    const mood = d.currentMood || 'neutral';
-    const lvl = d.productivityLevel || 2;
-    let quote = d.currentQuote || '';
-    const lastqm = d.lastQuoteMood || null;
+    const mood = stored.currentMood || 'neutral';
+    const level = stored.productivityLevel || 2;
+    let quote = stored.currentQuote || '';
+    const lastq = stored.lastQuoteMood || null;
     
-    if ((lastqm !== mood) || !quote) {
-        quote = await genquote(mood, lvl);
+    if ((lastq !== mood) || !quote) {
+        quote = await generatequote(mood, level);
     }
     
-    show(info, mood, lvl, quote);
+    renderui(trackdata, mood, level, quote);
 }
 
-async function genquote(mood, lvl) {
-    const qel = document.getElementById('quote');
-    if (qel) {
-        qel.textContent = 'THINKING...';
-        qel.classList.add('loading');
+async function fetchnews() {
+    const newsel = document.getElementById('news');
+    if (!newsel) return;
+    
+    console.log('[NEWS] Starting news load...');
+    
+    try {
+        const cache = await chrome.storage.local.get(['news', 'newsTime']);
+        const now = Date.now();
+        
+        if (cache.news && cache.newsTime && (now - cache.newsTime) < 60000) {
+            console.log('[NEWS] Using cached:', cache.news);
+            newsel.textContent = cache.news;
+            return;
+        }
+        
+        console.log('[NEWS] Fetching from NewsAPI...');
+        newsel.textContent = 'FETCHING NEWS...';
+        
+        const response = await fetch('https://newsapi.org/v2/top-headlines?category=technology&language=en&pageSize=1&apiKey=d5d0ab2a8941450587bfa64ed5e2a82a');
+        
+        if (!response.ok) {
+            console.error('[NEWS] API failed:', response.status);
+            throw new Error('NewsAPI failed');
+        }
+        
+        const data = await response.json();
+        console.log('[NEWS] API response:', data);
+        
+        if (!data.articles || data.articles.length === 0) {
+            console.error('[NEWS] No articles');
+            throw new Error('No articles');
+        }
+        
+        let headline = data.articles[0].title;
+        console.log('[NEWS] Raw headline:', headline);
+        
+        headline = headline.split(' - ')[0];
+        headline = headline.split(' | ')[0];
+        headline = headline.split(' â€" ')[0];
+        headline = headline.replace(/\s+/g, ' ').trim();
+        
+        console.log('[NEWS] Cleaned headline:', headline);
+        
+        if (headline.length > 60) {
+            headline = headline.substring(0, 57) + '...';
+            console.log('[NEWS] Truncated headline:', headline);
+        }
+        
+        headline = headline.toUpperCase();
+        console.log('[NEWS] Final headline:', headline);
+        
+        newsel.textContent = headline;
+        await chrome.storage.local.set({ news: headline, newsTime: now });
+        
+        console.log('[NEWS] Success!');
+        
+    } catch (err) {
+        console.error('[NEWS] Error:', err);
+        
+        const backups = [
+            'AI TRANSFORMS TECH INDUSTRY',
+            'QUANTUM COMPUTING BREAKTHROUGH',
+            'CYBERSECURITY THREATS EVOLVE',
+            'CLOUD COMPUTING GROWTH SURGES',
+            'OPEN SOURCE INNOVATION LEADS',
+            'MACHINE LEARNING ADVANCES',
+            'TECH GIANTS UNVEIL PRODUCTS',
+            'BLOCKCHAIN ADOPTION GROWS'
+        ];
+        
+        const backup = backups[Math.floor(Math.random() * backups.length)];
+        console.log('[NEWS] Using fallback:', backup);
+        newsel.textContent = backup;
+        await chrome.storage.local.set({ news: backup, newsTime: Date.now() });
+    }
+}
+
+async function generatequote(mood, level) {
+    const quoteel = document.getElementById('quote');
+    if (quoteel) {
+        quoteel.textContent = 'THINKING...';
+        quoteel.classList.add('loading');
     }
     
     try {
-        let prompt = '';
-        if (lvl === 1) {
-            prompt = 'Generate a short motivational quote (max 10 words) for someone wasting time on social media. OUTPUT ONLY THE QUOTE.';
-        } else if (lvl === 2) {
-            prompt = 'Generate a short encouraging quote (max 10 words) for someone with medium productivity. OUTPUT ONLY THE QUOTE.';
+        let userprompt = '';
+        if (level === 1) {
+            userprompt = 'Generate a short motivational quote (max 10 words) for someone wasting time on social media. OUTPUT ONLY THE QUOTE.';
+        } else if (level === 2) {
+            userprompt = 'Generate a short encouraging quote (max 10 words) for someone with medium productivity. OUTPUT ONLY THE QUOTE.';
         } else {
-            prompt = 'Generate a short celebratory quote (max 10 words) for someone being very productive. OUTPUT ONLY THE QUOTE.';
+            userprompt = 'Generate a short celebratory quote (max 10 words) for someone being very productive. OUTPUT ONLY THE QUOTE.';
         }
         
-        const res = await fetch('https://ai.hackclub.com/chat/completions', {
+        const response = await fetch('https://ai.hackclub.com/chat/completions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -64,68 +160,68 @@ async function genquote(mood, lvl) {
                     },
                     {
                         role: 'user',
-                        content: prompt
+                        content: userprompt
                     }
                 ]
             })
         });
         
-        if (!res.ok) {
-            throw new Error(`API error: ${res.status}`);
+        if (!response.ok) {
+            throw new Error(`API error: ${response.status}`);
         }
         
-        const data = await res.json();
+        const data = await response.json();
         
-        let q = data.choices?.[0]?.message?.content?.trim();
+        let quotetext = data.choices?.[0]?.message?.content?.trim();
         
-        if (q) {
-            q = q.replace(/<think>[\s\S]*?<\/think>/gi, '');
-            q = q.replace(/<[^>]+>/g, '');
-            q = q.replace(/^["']|["']$/g, '');
-            q = q.trim();
+        if (quotetext) {
+            quotetext = quotetext.replace(/<think>[\s\S]*?<\/think>/gi, '');
+            quotetext = quotetext.replace(/<[^>]+>/g, '');
+            quotetext = quotetext.replace(/^["']|["']$/g, '');
+            quotetext = quotetext.trim();
             
-            if (!q || q.length < 3) {
+            if (!quotetext || quotetext.length < 3) {
                 throw new Error('Quote cleaned to nothing');
             }
             
-            if (q.length > 80) {
-                q = q.substring(0, 77) + '...';
+            if (quotetext.length > 80) {
+                quotetext = quotetext.substring(0, 77) + '...';
             }
             
             await chrome.storage.local.set({ 
-                currentQuote: q,
+                currentQuote: quotetext,
                 lastQuoteMood: mood
             });
             
-            if (qel) {
-                qel.textContent = q.toUpperCase();
-                qel.classList.remove('loading');
+            if (quoteel) {
+                quoteel.textContent = quotetext.toUpperCase();
+                quoteel.classList.remove('loading');
             }
             
-            return q;
+            return quotetext;
         } else {
             throw new Error('No quote in response');
         }
         
-    } catch (e) {
-        const fb = getfb(mood);
+    } catch (err) {
+        const backup = getbackupquote(mood);
         
         await chrome.storage.local.set({ 
-            currentQuote: fb,
+            currentQuote: backup,
             lastQuoteMood: mood
         });
         
-        if (qel) {
-            qel.textContent = fb;
-            qel.classList.remove('loading');
+        if (quoteel) {
+            quoteel.textContent = backup;
+            quoteel.classList.remove('loading');
         }
         
-        return fb;
+        return backup;
     }
 }
 
-function getfb(mood) {
-    const fb = {
+function getbackupquote(mood) {
+    const quotes = {
         'sad': 'TIME TO GET BACK TO WORK',
         'grumpy': 'FOCUS. YOU CAN DO BETTER',
         'neutral': 'KEEP GOING. STAY FOCUSED',
@@ -134,154 +230,152 @@ function getfb(mood) {
         'overjoyed': 'MAXIMUM PRODUCTIVITY ACHIEVED'
     };
     
-    return fb[mood] || 'STAY FOCUSED';
+    return quotes[mood] || 'STAY FOCUSED';
 }
 
-function show(info, mood, lvl, quote) {
-    const img = document.querySelector('.catimg');
-    const mtxt = document.getElementById('mood');
-    const emoji = document.getElementById('emoji');
-    const qel = document.getElementById('quote');
+function renderui(trackdata, mood, level, quote) {
+    const catimg = document.querySelector('.catimg');
+    const moodtext = document.getElementById('mood');
+    const moodemoji = document.getElementById('emoji');
+    const quoteel = document.getElementById('quote');
     
-    let gif = 'neutral.gif';
-    let sym = '█';
+    let gifname = 'neutral.gif';
+    let symbol = '█';
     
-    if (lvl === 1 || mood === 'sad' || mood === 'grumpy') {
-        gif = 'sad.gif';
-        sym = mood === 'sad' ? '▼' : '✕';
-    } else if (lvl === 3 || mood === 'happy' || mood === 'overjoyed') {
-        gif = 'happy.gif';
-        sym = mood === 'overjoyed' ? '★' : '▲';
+    if (level === 1 || mood === 'sad' || mood === 'grumpy') {
+        gifname = 'sad.gif';
+        symbol = mood === 'sad' ? '▼' : '✕';
+    } else if (level === 3 || mood === 'happy' || mood === 'overjoyed') {
+        gifname = 'happy.gif';
+        symbol = mood === 'overjoyed' ? '★' : '▲';
     } else {
-        gif = 'neutral.gif';
-        sym = mood === 'content' ? '◆' : '█';
+        gifname = 'neutral.gif';
+        symbol = mood === 'content' ? '◆' : '█';
     }
     
-    img.src = `art/${gif}`;
-    img.onerror = () => {
-        img.style.background = '#ffffff';
-        img.alt = '[IMG.NOT.FOUND]';
+    catimg.src = `art/${gifname}`;
+    catimg.onerror = () => {
+        catimg.style.background = '#ffffff';
+        catimg.alt = '[IMG.NOT.FOUND]';
     };
     
-    img.style.cursor = 'default';
-    img.onclick = null;
+    catimg.style.cursor = 'default';
+    catimg.onclick = null;
     
-    mtxt.textContent = mood.toUpperCase();
-    if (emoji) emoji.textContent = sym;
+    moodtext.textContent = mood.toUpperCase();
+    if (moodemoji) moodemoji.textContent = symbol;
     
-    if (qel && quote) {
-        qel.textContent = quote.toUpperCase();
+    if (quoteel && quote) {
+        quoteel.textContent = quote.toUpperCase();
     }
     
-    updbar(info);
+    updatebar(trackdata);
     
-    document.getElementById('time').textContent = fmttime(info.total).toUpperCase();
-    document.getElementById('site').textContent = (info.curr || 'NONE').toUpperCase();
-    document.getElementById('count').textContent = info.sites.length;
+    document.getElementById('time').textContent = formattime(trackdata.total).toUpperCase();
+    document.getElementById('site').textContent = (trackdata.curr || 'NONE').toUpperCase();
+    document.getElementById('count').textContent = trackdata.sites.length;
     
-    showsites(info);
+    rendersites(trackdata);
 }
 
-function updbar(info) {
-    const bar = document.getElementById('productivity-bar');
-    if (!bar) return;
+function updatebar(trackdata) {
+    const barcontainer = document.getElementById('productivity-bar');
+    if (!barcontainer) return;
     
-    chrome.storage.local.get(['trackingData'], (d) => {
-        const td = d.trackingData || info;
-        const cls = td.cls || {};
-        const act = td.act || [];
+    chrome.storage.local.get(['trackingData'], (result) => {
+        const data = result.trackingData || trackdata;
+        const classifications = data.cls || {};
+        const activities = data.act || [];
         
-        let t1 = 0;
-        let t2 = 0;
-        let t3 = 0;
+        let time1 = 0;
+        let time2 = 0;
+        let time3 = 0;
         
-        act.forEach(s => {
-            const c = cls[s.site];
-            const lvl = c ? c.level : 2;
-            const tm = s.time || 0;
+        activities.forEach(site => {
+            const classified = classifications[site.site];
+            const lvl = classified ? classified.level : 2;
+            const duration = site.time || 0;
             
             if (lvl === 1) {
-                t1 += tm;
+                time1 += duration;
             } else if (lvl === 2) {
-                t2 += tm;
+                time2 += duration;
             } else if (lvl === 3) {
-                t3 += tm;
+                time3 += duration;
             }
         });
         
-        const tot = t1 + t2 + t3;
+        const totaltime = time1 + time2 + time3;
         
-        let p1 = 0;
-        let p2 = 0;
-        let p3 = 0;
+        let percent1 = 0;
+        let percent2 = 0;
+        let percent3 = 0;
         
-        if (tot > 0) {
-            p3 = (t3 / tot) * 100;
-            p2 = (t2 / tot) * 100;
-            p1 = (t1 / tot) * 100;
+        if (totaltime > 0) {
+            percent3 = (time3 / totaltime) * 100;
+            percent2 = (time2 / totaltime) * 100;
+            percent1 = (time1 / totaltime) * 100;
         } else {
-            p1 = 33.33;
-            p2 = 33.33;
-            p3 = 33.34;
+            percent1 = 33.33;
+            percent2 = 33.33;
+            percent3 = 33.34;
         }
         
-        let html = '';
+        let markup = '';
         
-        if (p3 > 0) {
-            html += `<div class="bar-segment class-3" style="width: ${p3}%"></div>`;
+        if (percent3 > 0) {
+            markup += `<div class="bar-segment class-3" style="width: ${percent3}%"></div>`;
         }
-        if (p2 > 0) {
-            html += `<div class="bar-segment class-2" style="width: ${p2}%"></div>`;
+        if (percent2 > 0) {
+            markup += `<div class="bar-segment class-2" style="width: ${percent2}%"></div>`;
         }
-        if (p1 > 0) {
-            html += `<div class="bar-segment class-1" style="width: ${p1}%"></div>`;
+        if (percent1 > 0) {
+            markup += `<div class="bar-segment class-1" style="width: ${percent1}%"></div>`;
         }
         
-        bar.innerHTML = html;
+        barcontainer.innerHTML = markup;
     });
 }
 
-function showsites(info) {
-    const list = document.getElementById('sites-list');
-    if (!list) return;
+function rendersites(trackdata) {
+    const sitelist = document.getElementById('sites-list');
+    if (!sitelist) return;
     
-    const act = info.act || [];
+    const activities = trackdata.act || [];
     
-    if (act.length === 0) {
-        list.innerHTML = '<div class="dropdown-item"><span class="site-name">NO SITES YET</span></div>';
+    if (activities.length === 0) {
+        sitelist.innerHTML = '<div class="dropdown-item"><span class="site-name">NO SITES YET</span></div>';
         return;
     }
     
-    const sorted = [...act].sort((a, b) => b.time - a.time);
+    const sorted = [...activities].sort((a, b) => b.time - a.time);
     
-    let html = '';
+    let markup = '';
     sorted.forEach(item => {
-        const name = item.site.toUpperCase();
-        const time = fmttime(item.time).toUpperCase();
+        const hostname = item.site.toUpperCase();
+        const duration = formattime(item.time).toUpperCase();
         
-        html += `
+        markup += `
             <div class="dropdown-item">
-                <span class="site-name">${name}</span>
-                <span class="site-time">${time}</span>
+                <span class="site-name">${hostname}</span>
+                <span class="site-time">${duration}</span>
             </div>
         `;
     });
     
-    list.innerHTML = html;
+    sitelist.innerHTML = markup;
 }
 
-function fmttime(s) {
-    if (s < 60) {
-        return s + 's';
-    } else if (s < 3600) {
-        const m = Math.floor(s / 60);
-        const r = s % 60;
-        return m + 'm ' + r + 's';
+function formattime(seconds) {
+    if (seconds < 60) {
+        return seconds + 's';
+    } else if (seconds < 3600) {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return mins + 'm ' + secs + 's';
     } else {
-        const h = Math.floor(s / 3600);
-        const m = Math.floor((s % 3600) / 60);
-        return h + 'h ' + m + 'm';
+        const hrs = Math.floor(seconds / 3600);
+        const mins = Math.floor((seconds % 3600) / 60);
+        return hrs + 'h ' + mins + 'm';
     }
 }
-
-

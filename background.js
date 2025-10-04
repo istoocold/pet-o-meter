@@ -325,7 +325,3 @@ function getmood(lvl) {
     return opts[Math.floor(Math.random() * opts.length)];
 }
 
-       
-
-
-
