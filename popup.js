@@ -93,7 +93,7 @@ async function fetchnews() {
         
         headline = headline.split(' - ')[0];
         headline = headline.split(' | ')[0];
-        headline = headline.split(' â€" ')[0];
+        headline = headline.split(' Ã¢â‚¬" ')[0];
         headline = headline.replace(/\s+/g, ' ').trim();
         
         console.log('[NEWS] Cleaned headline:', headline);
@@ -140,13 +140,25 @@ async function generatequote(mood, level) {
     }
     
     try {
+        
+        const stored = await chrome.storage.local.get(['trackingData']);
+        const trackdata = stored.trackingData || { act: [] };
+        
+        
+        const topsites = [...(trackdata.act || [])]
+            .sort((a, b) => b.time - a.time)
+            .slice(0, 3)
+            .map(s => s.site);
+        
         let userprompt = '';
+        let context = topsites.length > 0 ? `Top sites visited: ${topsites.join(', ')}. ` : '';
+        
         if (level === 1) {
-            userprompt = 'Generate a short motivational quote (max 10 words) for someone wasting time on social media. OUTPUT ONLY THE QUOTE.';
+            userprompt = context + 'Generate a short motivational quote (max 12 words) that specifically references the sites they are using. If YouTube, mention videos. If Netflix, mention binge-watching. If social media (Twitter, Instagram, Facebook, TikTok), mention scrolling or feeds. If gaming sites, mention games. Be specific and direct. OUTPUT ONLY THE QUOTE.';
         } else if (level === 2) {
-            userprompt = 'Generate a short encouraging quote (max 10 words) for someone with medium productivity. OUTPUT ONLY THE QUOTE.';
+            userprompt = context + 'Generate a short encouraging quote (max 12 words) for someone with medium productivity. If they are on news or info sites, acknowledge that. OUTPUT ONLY THE QUOTE.';
         } else {
-            userprompt = 'Generate a short celebratory quote (max 10 words) for someone being very productive. OUTPUT ONLY THE QUOTE.';
+            userprompt = context + 'Generate a short celebratory quote (max 12 words) that specifically mentions the productive sites they are using. If GitHub/GitLab, mention coding. If Figma/design tools, mention designing. If docs/learning sites, mention learning. Be specific. OUTPUT ONLY THE QUOTE.';
         }
         
         const response = await fetch('https://ai.hackclub.com/chat/completions', {
@@ -156,7 +168,7 @@ async function generatequote(mood, level) {
                 messages: [
                     {
                         role: 'system',
-                        content: 'You are a quote generator for a Chrome extension. The extension is a PROGRAM that can ONLY display text. You MUST respond with ONLY the quote itself - no explanations, no thinking, no extra words. The quote must be 10 words or less. Do NOT use <think> tags or any other formatting. Just output the raw quote text.'
+                        content: 'You are a quote generator for a Chrome extension. The extension is a PROGRAM that can ONLY display text. You MUST respond with ONLY the quote itself - no explanations, no thinking, no extra words. The quote must be 12 words or less. Make quotes SPECIFIC to the websites mentioned - reference the actual activity (watching videos, coding, designing, scrolling feeds, binge-watching shows, gaming, etc). Be direct and relatable. Do NOT use <think> tags or any other formatting. Just output the raw quote text.'
                     },
                     {
                         role: 'user',
@@ -184,8 +196,8 @@ async function generatequote(mood, level) {
                 throw new Error('Quote cleaned to nothing');
             }
             
-            if (quotetext.length > 80) {
-                quotetext = quotetext.substring(0, 77) + '...';
+            if (quotetext.length > 90) {
+                quotetext = quotetext.substring(0, 87) + '...';
             }
             
             await chrome.storage.local.set({ 
